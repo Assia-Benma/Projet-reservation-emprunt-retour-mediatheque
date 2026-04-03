@@ -1,61 +1,77 @@
 package bibliotheque.mediatheque.service;
 
+import Exception.RetourException;
 import bibliotheque.document.Document;
 import bibliotheque.mediatheque.server.ServerMediatheque;
-import Exception.*;
 
-import java.io.*;
-import java.util.HashMap;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class ServiceRetour extends Service {
 
     public void run() {
-        HashMap<String, Document> docs = ServerMediatheque.getListeDocs();
-        System.out.println("L'utilisateur s'est connecté");
+        Map<String, Document> docs = ServerMediatheque.getListeDocs();
 
         try {
             BufferedReader in = new BufferedReader(new InputStreamReader(client.getInputStream()));
             PrintWriter out = new PrintWriter(client.getOutputStream(), true);
 
-            out.println("Bienvenue à la médiatheque, vous pouvez retourner un livre.");
-
-            out.println("Voici la liste des commandes possible : ");
-            out.println("- retourner <id> : Retourner un document par son ID");
-            out.println("- quitter : Fermer la connexion");
+            out.println("Bienvenue sur le service de retour (port 2002).");
+            out.println("Commandes: retourner <id> [degrade] | quitter");
 
             String commande;
             while ((commande = in.readLine()) != null) {
-                commande = commande.trim();
+                String trimmed = commande.trim();
+                String lower = trimmed.toLowerCase(Locale.ROOT);
 
-                switch (commande.toLowerCase()) {
-                    case "quitter":
-                        out.println("Au revoir !");
-                        client.close();
-                        return;
-
-                    default:
-                        if (commande.toLowerCase().startsWith("retourner ")) {
-                            String idDoc = commande.substring("retourner ".length()).trim();
-                            if (!docs.containsKey(idDoc)) {
-                                out.println("Document [" + idDoc + "] introuvable.");
-                            } else {
-                                try {
-                                    docs.get(idDoc).retour();
-                                    out.println("OK : document [" + idDoc + "] retourné avec succès.");
-                                } catch (RetourException e) {
-                                    out.println("Ce document n'est pas emprunté.");
-                                }
-                            }
-                        } else {
-                            out.println("Commande inconnue. Essayez : retourner <id>, quitter.");
-                        }
+                if (lower.equals("quitter")) {
+                    out.println("Connexion fermee.");
+                    client.close();
+                    return;
                 }
+
+                if (lower.startsWith("retourner ")) {
+                    String[] parts = trimmed.split("\\s+");
+                    if (parts.length < 2) {
+                        out.println("Usage: retourner <id> [degrade]");
+                        continue;
+                    }
+
+                    String idDoc = parts[1];
+                    boolean degradationConstatee = parts.length >= 3 && parts[2].equalsIgnoreCase("degrade");
+                    Document document = docs.get(idDoc);
+                    if (document == null) {
+                        out.println("ERREUR: document [" + idDoc + "] introuvable.");
+                        continue;
+                    }
+
+                    try {
+                        document.retour(degradationConstatee);
+                        out.println("OK: document [" + idDoc + "] retourne avec succes.");
+
+                        List<String> alerts = document.drainAvailabilityAlerts();
+                        if (!alerts.isEmpty()) {
+                            ServerMediatheque.getSmokeSignalService().sendAvailabilityAlerts(document, alerts);
+                            out.println("INFO: " + alerts.size() + " alerte(s) de disponibilite envoyee(s).");
+                        }
+                    } catch (RetourException e) {
+                        out.println("REFUS: " + e.getMessage());
+                    }
+                    continue;
+                }
+
+                out.println("Commande inconnue. Commandes: retourner <id> [degrade] | quitter");
             }
 
             client.close();
-        }
-        catch (IOException ex) {
+        } catch (IOException ex) {
             System.out.println(ex.getMessage());
         }
     }
 }
+

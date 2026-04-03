@@ -1,40 +1,42 @@
 package bibliotheque.state.type;
 
-import bibliotheque.document.Document;
+import Exception.EmpruntException;
+import Exception.ReservationException;
 import bibliotheque.Abonne;
-import Exception.*;
+import Exception.RetourException;
+import bibliotheque.document.Document;
 import bibliotheque.state.DocumentState;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public class EmprunteState implements DocumentState {
-    private LocalDate dateEmprunt;
-
-    EmprunteState() {
-        this.dateEmprunt = LocalDate.now();
-    }
 
     @Override
-    public boolean canTake(Document doc, Abonne ab){
+    public boolean canTake(Document doc, Abonne ab) {
         return false;
     }
 
     @Override
-    public void reservation(Document doc, Abonne ab) throws ReservationException {
-        throw new ReservationException();
+    public void reservation(Document doc, Abonne ab) {
+        throw new ReservationException("Document deja emprunte : reservation impossible pour le moment.");
     }
 
     @Override
-    public void emprunt(Document doc, Abonne ab) throws EmpruntException {
-        throw new EmpruntException();
+    public void emprunt(Document doc, Abonne ab) {
+        throw new EmpruntException("Document deja emprunte : nouvel emprunt impossible.");
     }
 
     @Override
-    public void retour(Document doc) {
-        doc.setState(new LibreState());
-        if(Document.degradation() || LocalDate.now().isAfter(dateEmprunt.plusWeeks(2))){
-            doc.getAbonneDeLaReservationDuDocument().bannir(30);
+    public void retour(Document doc, boolean degradationConstatee) {
+        Abonne emprunteur = doc.getEmprunteur();
+        LocalDateTime dateEmprunt = doc.getEmpruntAt();
+
+        boolean enRetard = dateEmprunt != null && LocalDateTime.now().isAfter(dateEmprunt.plusWeeks(2));
+        if (emprunteur != null && (enRetard || degradationConstatee)) {
+            emprunteur.bannir(30);
         }
-        doc.setAbonneDeLaReservationDuDocument(null);
+
+        doc.markReturnedToShelf();
     }
 }
+

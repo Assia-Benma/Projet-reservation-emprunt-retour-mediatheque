@@ -1,52 +1,44 @@
 package bibliotheque.document.type;
-import Exception.*;
+
+import Exception.EmpruntException;
+import Exception.ReservationException;
 import bibliotheque.Abonne;
 import bibliotheque.document.Document;
 
 public class DVD extends Document {
-    private boolean adulte;
+    private final boolean adulte;
 
     public DVD(String id, String titre, boolean adulte) {
         super(id, titre);
         this.adulte = adulte;
     }
 
-    public boolean getAdulte() {
+    public boolean isAdulte() {
         return adulte;
     }
 
     @Override
     public boolean canTake(Abonne ab) {
-        if (this.adulte) {
-            if (ab.isAdult()) {
-                return state.canTake(this, ab);
-            }
-            else{
-                return false;
-            }
+        if (adulte && !ab.isAdult()) {
+            return false;
         }
-        else {
-            return state.canTake(this, ab);
-        }
+        return super.canTake(ab);
     }
 
     @Override
     public void reservation(Abonne ab) throws ReservationException {
-        if(this.canTake(ab)){
-            state.reservation(this, ab);
+        if (adulte && !ab.isAdult()) {
+            throw new ReservationException("Vous n'avez pas l'age requis (16+) pour reserver ce DVD adulte.");
         }
-        else{
-            throw new ReservationException();
-        }
+        super.reservation(ab);
     }
 
     @Override
     public void emprunt(Abonne ab) throws EmpruntException {
-        if(this.canTake(ab)){
-            state.emprunt(this, ab);
+        if (adulte && !ab.isAdult()) {
+            throw new EmpruntException("Vous n'avez pas l'age requis (16+) pour emprunter ce DVD adulte.");
         }
-        else{
-            throw new EmpruntException();
-        }
+        super.emprunt(ab);
     }
 }
+

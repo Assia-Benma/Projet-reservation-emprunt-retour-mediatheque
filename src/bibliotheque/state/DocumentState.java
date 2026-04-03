@@ -1,8 +1,10 @@
 package bibliotheque.state;
 
+import Exception.EmpruntException;
+import Exception.ReservationException;
+import Exception.RetourException;
 import bibliotheque.Abonne;
 import bibliotheque.document.Document;
-import Exception.*;
 
 public interface DocumentState {
     boolean canTake(Document doc, Abonne ab);
@@ -11,5 +13,6 @@ public interface DocumentState {
 
     void emprunt(Document doc, Abonne ab) throws EmpruntException;
 
-    void retour(Document doc) throws RetourException;
+    void retour(Document doc, boolean degradationConstatee) throws RetourException;
 }
+

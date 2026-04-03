@@ -2,12 +2,12 @@ package bibliotheque.mediatheque.server;
 
 import bibliotheque.mediatheque.service.Service;
 
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.io.IOException;
 
-public class ServerRetour implements Runnable{
-    private ServerSocket listenSocket;
+public class ServerRetour implements Runnable {
+    private final ServerSocket listenSocket;
     private final Class<? extends Service> serviceClass;
 
     public ServerRetour(Class<? extends Service> serviceClass, int port) throws IOException {
@@ -16,23 +16,22 @@ public class ServerRetour implements Runnable{
     }
 
     public void run() {
-        System.err.println("Serveur démarré sur le port " + listenSocket.getLocalPort());
+        System.err.println("Serveur retour actif sur le port " + listenSocket.getLocalPort());
         try {
             while (true) {
                 Socket clientSocket = listenSocket.accept();
-
                 try {
-                    Service service = serviceClass.newInstance();
+                    Service service = serviceClass.getDeclaredConstructor().newInstance();
                     service.setSocket(clientSocket);
                     new Thread(service).start();
-
-                } catch (InstantiationException | IllegalAccessException e) {
-                    System.err.println("Erreur lors de la création du service: " + e.getMessage());
+                } catch (ReflectiveOperationException e) {
+                    System.err.println("Erreur lors de la creation du service: " + e.getMessage());
                     clientSocket.close();
                 }
             }
         } catch (IOException e) {
-            System.err.println("Serveur arrêté: " + e.getMessage());
+            System.err.println("Serveur retour arrete: " + e.getMessage());
         }
     }
 }
+

@@ -1,5 +1,8 @@
 package bibliotheque.document;
-import Exception.*;
+
+import Exception.EmpruntException;
+import Exception.ReservationException;
+import Exception.RetourException;
 import bibliotheque.Abonne;
 
 
